@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+      http://www.springframework.org/schema/aop
+      http://www.springframework.org/schema/aop/spring-aop.xsd
+      http://www.springframework.org/schema/context
+      http://www.springframework.org/schema/context/spring-context.xsd
+      http://www.springframework.org/schema/jdbc
+      http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+      http://www.springframework.org/schema/data/jpa
+      http://www.springframework.org/schema/data/jpa/spring-jpa.xsd
+      http://www.springframework.org/schema/tx
+      http://www.springframework.org/schema/tx/spring-tx.xsd">
+    
+    <!--配置连接池的相关的信息-->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"/>
+        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/jpa?characterEncoding=utf-8"/>
+        <property name="user" value="root"/>
+        <property name="password" value="admind"/>
+    </bean>
+    
+    <!--配置实体类管理工厂的对象,加入springioc容器中-->
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <!--配置扫描的实体类的对象-->
+        <property name="packagesToScan" value="com.m520it.domain"/>
+        <!--配置连接池的信息-->
+        <property name="dataSource" ref="dataSource"/>
+        <!--配置实现这个工厂的hibernate的信息-->
+        <property name="persistenceProvider">
+            <bean class="org.hibernate.jpa.HibernatePersistenceProvider"></bean>
+        </property>
+        <!--配置jpa供应商的适配器-->
+        <property name="jpaVendorAdapter">
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+                <!--配置是否显示mysql的语句-->
+                <property name="showSql" value="true"/>
+                <!--指定使用的是什么数据库-->
+                <property name="database" value="MYSQL"/>
+                <!--配置是否自动创建表-->
+                <property name="generateDdl" value="false"/>
+                <!--数据的方言-->
+                <property name="databasePlatform" value="org.hibernate.dialect.MySQL55Dialect"/>
+            </bean>
+        </property>
+        <!--配置jpa的高级方言的支持-->
+        <property name="jpaDialect">
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaDialect"/>
+        </property>
+    </bean>
+
+    <!--配置springDataJpa和spring的整合
+                base-package:表示岁哪个包下的接口做增强
+                transaction-manager-ref:配置事物管理
+                entity-manager-factory-ref:配置的实体类管理工厂的引用
+    -->
+    <jpa:repositories base-package="com.m520it.dao" transaction-manager-ref="transactionManager"
+                      entity-manager-factory-ref="entityManagerFactory"></jpa:repositories>
+
+    <!--配置事物管理器-->
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+        <property name="entityManagerFactory" ref="entityManagerFactory"></property>
+    </bean>
+
+    <!--配置事物的通知点-->
+    <tx:advice id="tx_advice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="find*" read-only="true"/>
+            <tx:method name="get*" read-only="true"/>
+            <tx:method name="*" propagation="REQUIRED"/>
+        </tx:attributes>
+    </tx:advice>
+    <!--配置切面编程,对哪个类进行事物的管理-->
+    <aop:config>
+        <aop:pointcut id="p_cut" expression="execution(* com.m520it.service.impl.*.*(..))"/>
+        <aop:advisor advice-ref="tx_advice" pointcut-ref="p_cut"/>
+    </aop:config>
+
+    <!--依赖注入,配置扫描的包-->
+    <context:component-scan base-package="com.m520it"></context:component-scan>
+
+</beans>
